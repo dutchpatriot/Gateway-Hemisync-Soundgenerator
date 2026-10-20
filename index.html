@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gateway · Hemi-Sync Lab</title>
+<style>
+:root{
+  --bg:#0a0d12;--panel:#10151d;--panel2:#161d27;--line:#223040;--txt:#dbe4ee;--mut:#7f90a3;
+  --acc:#5ad1ff;--acc2:#b48cff;--ok:#5be3a0;--warn:#ffb454;--bad:#ff6b7a;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--acc)}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.primary{background:linear-gradient(180deg,#1b3a52,#12283a);border-color:#2b6a90}
+button.danger{border-color:#5a2b33}
+button:disabled{opacity:.45;cursor:default}
+input[type=number],input[type=text],select{background:#0c1017;border:1px solid var(--line);border-radius:5px;padding:4px 6px;width:100%}
+input[type=number]{font-family:var(--mono)}
+input[type=range]{width:100%;accent-color:var(--acc)}
+header{display:flex;align-items:center;gap:16px;padding:10px 18px;border-bottom:1px solid var(--line);background:#0c1117;position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0;letter-spacing:.5px;font-weight:600}
+header h1 span{color:var(--acc)}
+header .stat{font-family:var(--mono);font-size:12px;color:var(--mut)}
+header .spacer{flex:1}
+main{display:grid;grid-template-columns:300px 1fr 330px;gap:12px;padding:12px;min-height:calc(100vh - 50px)}
+@media(max-width:1200px){main{grid-template-columns:1fr 1fr}.col-r{grid-column:1/-1}}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+.panel h2{font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mut);margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.panel h2 .r{margin-left:auto;font-weight:400;text-transform:none;letter-spacing:0}
+.row{display:flex;gap:8px;align-items:center;margin:6px 0}
+.row label{color:var(--mut);font-size:12px;min-width:84px}
+.row .v{font-family:var(--mono);font-size:12px;min-width:64px;text-align:right}
+.transport{display:flex;gap:8px}
+.transport button{flex:1;padding:10px;font-weight:600}
+.big{font-family:var(--mono);font-size:28px;text-align:center;padding:8px 0 2px;letter-spacing:1px}
+.sub{text-align:center;color:var(--mut);font-size:12px;margin-bottom:6px}
+table.layers{width:100%;border-collapse:collapse;font-size:13px}
+table.layers th{font-size:11px;color:var(--mut);text-align:left;font-weight:500;padding:4px 4px;border-bottom:1px solid var(--line)}
+table.layers td{padding:3px 4px;border-bottom:1px solid #141b25;vertical-align:middle}
+table.layers input[type=number]{width:84px}
+table.layers select{width:auto}
+table.layers .lr{font-family:var(--mono);font-size:11.5px;color:var(--acc);white-space:nowrap}
+table.layers .band{font-size:11px;padding:1px 6px;border-radius:10px;background:#1b2634;color:var(--mut);white-space:nowrap}
+.band.delta{color:#b48cff}.band.theta{color:#5ad1ff}.band.alpha{color:#5be3a0}.band.beta{color:#ffb454}.band.gamma{color:#ff6b7a}
+.x{background:none;border:none;color:var(--mut);font-size:16px;padding:0 6px}
+.x:hover{color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:4px 10px;font-size:12px;cursor:pointer}
+.chip:hover{border-color:var(--acc2)}
+.chip.sel{border-color:var(--acc);color:var(--acc)}
+.seq{font-size:13px}
+.step{display:grid;grid-template-columns:18px 1fr 70px 60px 24px;gap:6px;align-items:center;padding:5px 6px;border:1px solid var(--line);border-radius:6px;margin:4px 0;background:#0e131a}
+.step.active{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.step.done{opacity:.5}
+.step .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step input{padding:2px 4px}
+.bar{height:6px;background:#1a2330;border-radius:3px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));width:0}
+canvas{width:100%;display:block;background:#070a0f;border-radius:8px;border:1px solid var(--line)}
+.meter{height:8px;background:#1a2330;border-radius:4px;overflow:hidden;position:relative}
+.meter i{position:absolute;left:0;top:0;bottom:0;background:var(--ok);width:0}
+.meter.clip i{background:var(--bad)}
+textarea{width:100%;min-height:54px;background:#0c1017;color:var(--txt);border:1px solid var(--line);border-radius:5px;font-family:var(--mono);font-size:12px;padding:6px}
+details{border-top:1px solid var(--line);padding:8px 0}
+details summary{cursor:pointer;color:var(--txt);font-weight:600}
+details p,details li{color:#b8c4d2;font-size:13px}
+code{font-family:var(--mono);background:#0c1017;padding:1px 4px;border-radius:3px;font-size:12px}
+.note{font-size:12px;color:var(--mut)}
+.badge{font-family:var(--mono);font-size:11px;padding:2px 6px;border:1px solid var(--line);border-radius:4px;color:var(--mut)}
+.badge.on{color:var(--ok);border-color:#2c5a45}
+.hidden{display:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tiny{font-size:11px;color:var(--mut)}
+#toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#182230;border:1px solid var(--acc);padding:8px 14px;border-radius:8px;opacity:0;transition:.3s;pointer-events:none;z-index:9}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>GATEWAY <span>·</span> HEMI-SYNC LAB</h1>
+  <span class="badge" id="engineBadge">engine: idle</span>
+  <span class="stat" id="srStat">— Hz</span>
+  <span class="stat" id="latStat"></span>
+  <div class="spacer"></div>
+  <button id="hpL" title="Left channel test">◀ L</button>
+  <button id="hpR" title="Right channel test">R ▶</button>
+  <button id="btnSave">Save JSON</button>
+  <button id="btnLoad">Load JSON</button>
+  <input type="file" id="fileLoad" accept="application/json" class="hidden">
+</header>
+
+<main>
+<!-- LEFT -->
+<div class="col-l">
+  <div class="panel">
+    <h2>Transport <span class="r" id="sessClock">00:00</span></h2>
+    <div class="big" id="beatBig">— Hz</div>
+    <div class="sub" id="beatSub">dominant beat · band</div>
+    <div class="transport">
+      <button class="primary" id="btnPlay">▶ Start</button>
+      <button id="btnStop" disabled>■ Stop</button>
+    </div>
+    <div class="row"><label>Master</label><input type="range" id="master" min="-60" max="0" step="0.5" value="-18"><span class="v" id="masterV">-18 dB</span></div>
+    <div class="row"><label>Fade in/out</label><input type="range" id="fade" min="0" max="60" step="1" value="8"><span class="v" id="fadeV">8 s</span></div>
+    <div class="row"><label>Glide</label><input type="range" id="glide" min="0" max="120" step="1" value="10"><span class="v" id="glideV">10 s</span></div>
+    <div class="tiny">Glide = time for any frequency/level change to ramp linearly (per-sample, float64). Abrupt jumps break entrainment. Layers are auto-normalised so Master = true peak level.</div>
+    <div class="row" style="margin-top:8px"><label>Output</label><div class="meter" id="meterL" style="flex:1"><i></i></div></div>
+    <div class="row"><label></label><div class="meter" id="meterR" style="flex:1"><i></i></div></div>
+    <div class="tiny" id="clipNote"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Sound bed <span class="r tiny">pink / surf masking</span></h2>
+    <div class="row"><label>Type</label>
+      <select id="noiseType"><option value="off">Off</option><option value="pink" selected>Pink (1/f)</option><option value="brown">Brown</option><option value="white">White</option><option value="surf">Surf (pink + swell)</option></select></div>
+    <div class="row"><label>Level</label><input type="range" id="noiseGain" min="-70" max="0" step="0.5" value="-38"><span class="v" id="noiseGainV">-38 dB</span></div>
+    <div class="row"><label>Phased pan</label><input type="range" id="noisePan" min="0" max="30" step="0.5" value="0"><span class="v" id="noisePanV">off</span></div>
+    <div class="row"><label>Surf period</label><input type="range" id="surfPeriod" min="4" max="20" step="0.5" value="11"><span class="v" id="surfPeriodV">11 s</span></div>
+    <div class="tiny">Measured tapes: tones ≈ 20 dB above pink noise / surf. Patent: "phased pink sound, six seconds peak-to-peak" = pan period 6 s.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Export (lossless WAV)</h2>
+    <div class="grid2">
+      <select id="wavRate"><option value="44100">44.1 kHz</option><option value="48000" selected>48 kHz</option><option value="96000">96 kHz</option></select>
+      <select id="wavBits"><option value="16">16-bit (dither)</option><option value="24" selected>24-bit</option><option value="32">32-bit float</option></select>
+    </div>
+    <div class="row"><label>Render</label>
+      <select id="wavWhat"><option value="seq">Whole sequence</option><option value="cur">Current layers (fixed)</option></select>
+      <input type="number" id="wavMin" value="20" min="1" max="240" step="1" style="width:70px" title="minutes (fixed render)"><span class="tiny">min</span></div>
+    <button id="btnWav" style="width:100%">⬇ Render WAV</button>
+    <div class="bar"><i id="wavBar"></i></div>
+    <div class="tiny" id="wavNote">Same float64 engine as live playback; no MP3 artefacts.</div>
+  </div>
+</div>
+
+<!-- CENTER -->
+<div class="col-c">
+  <div class="panel">
+    <h2>Layers <span class="r"><button id="btnAddLayer">+ layer</button> <button id="btnClear">clear</button></span></h2>
+    <table class="layers">
+      <thead><tr><th></th><th>Mode</th><th>Carrier (Hz)</th><th>Beat (Hz)</th><th>Level dB</th><th>L / R actual</th><th>Band</th><th></th></tr></thead>
+      <tbody id="layerBody"></tbody>
+    </table>
+    <div class="row" style="margin-top:10px"><label>Monroe notation</label>
+      <input type="text" id="notation" placeholder="100[1.5] 200[4.0] 250[4.0] 300[4.0]   or   l/r 100/104, 300/304, 500/504" >
+      <button id="btnParse">Apply</button></div>
+    <div class="tiny"><code>503[4.2]</code> = beat 4.2 Hz between carriers equally spaced around 503 Hz → L 500.9 / R 505.1 (sbagen/USENET measurement convention). <code>l/r 100/104</code> = literal left/right.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Spectrum <span class="r tiny">0–1000 Hz · L <span style="color:#5ad1ff">■</span> R <span style="color:#b48cff">■</span></span></h2>
+    <canvas id="spec" height="170"></canvas>
+  </div>
+  <div class="panel">
+    <h2>Scope <span class="r tiny">L/R waveforms (the beat is the slow envelope)</span></h2>
+    <canvas id="scope" height="120"></canvas>
+  </div>
+
+  <div class="panel" id="docs">
+    <h2>Reference</h2>
+    <details open><summary>What the numbers come from</summary>
+      <p><b>Measured Gateway tapes</b> (spectrum analysis posted to USENET, archived in SBaGen's <code>focus.txt</code>). F10 = <code>100[1.5] 200[4.0] 250[4.0] 300[4.0]</code>; F12 adds alpha overlays <code>400[10.0] 500[10.1] 600[4.8]</code> while keeping the F10 theta bed; F15 adds <code>500[7.05] 630[7.0] 750[7.0]</code>; F21 is <code>200/250/300[4.0]</code> + <code>600/750/900[16.2]</code>; F23–F27 use 400–900 Hz carriers at 3.9–4.2 Hz, F24/F27 add a 50 Hz carrier at 0.75–0.8 Hz. Tones sat ≈20 dB above pink noise/surf. The Institute's gear was analog, so the originals drifted; this app does not.</p>
+      <p><b>Monroe patents</b> US 3,884,218 (1975), 5,213,562 (1993), 5,356,368 (1994): binaural beats need carriers &lt; ~1500 Hz; 275 Hz cited as "most effective harmonic carrier"; the <i>Septon</i> (L 200/204/208, R 204/208/212 → 3 binaural + 4 monaural 4 Hz beats); "phased pink sound" with a 6 s pan cycle; sleep program alpha → theta → delta → theta in ~90 min cycles; 400/416 Hz (16 Hz beta) wake-up.</p>
+      <p><b>CIA / US Army "Analysis and Assessment of Gateway Process"</b> (McDonnell, 1983; CIA-RDP96-00788R001700210016-5): beats are delivered at a "virtually subliminal, marginally audible level" together with pink/white noise and surf; the body is brought to a ~7–7.5 Hz resonance (Bentov); the three OBE conditions are (1) ~7 Hz quiet, (2) hemisphere sync, (3) right-hemisphere beta stimulation — the OBE tape reportedly used beta "around 2877.3 CPS" (most plausibly a misprint of ≈28.77 Hz; offered here as a 28.8 Hz beta layer). The paper also notes that Focus 15 "involves further expansion… through the inclusion of additional levels of sound… an intensification of the basic Hemi-Sync frequencies" — consistent with the measured F15 set (F10 bed + 500/630/750 Hz at ~7 Hz) — and (page 25) that an ex-trainer could "guarantee" OBEs by applying Hemi-Sync once participants were in REM sleep; i.e. timing the beta step to a REM window (≈90 min after sleep onset) matters as much as the frequencies. Full OCR text and the PDF are in <code>docs/</code>.</p>
+      <p><b>Atwater, "The Hemi-Sync Process" (TMI Research, 1999)</b>: beats are detected in the superior olivary nuclei; multiplexed binaural beats mixed with music, pink sound and surf.</p>
+    </details>
+    <details><summary>Focus levels (Monroe's labels)</summary>
+      <ul><li><b>F3</b> – basic hemispheric sync · <b>F10</b> – mind awake / body asleep · <b>F12</b> – expanded awareness · <b>F15</b> – no time · <b>F21</b> – bridge to other energy systems · <b>F22</b> – humans in unconscious/chaotic states · <b>F23</b> – recently deceased · <b>F24–26</b> – belief-system territories · <b>F27</b> – "the Park".</li></ul>
+      <p>Focus levels are labels for states, not single Hz values. The Institute never published an official chart; the tables here are the best public measurements plus Monroe's patents.</p>
+    </details>
+    <details><summary>How to use it well</summary>
+      <ul><li>Stereo headphones are mandatory — binaural beats do not exist in mono or on speakers. Use ◀ L / R ▶ to confirm channels.</li>
+        <li>Keep tones just above the noise bed (master around −18 to −30 dB). Louder is not deeper.</li>
+        <li>Transitions matter more than targets: 0.5 Hz/min descents, long glides, and let the sequencer <b>Hold</b> a step when you are not ready to move on.</li>
+        <li>Expect "nothing" for the first weeks of F10. Stop if you feel distressed. Not for people with epilepsy, pacemakers, or while driving.</li></ul>
+    </details>
+    <details><summary>Engine precision</summary>
+      <p>Each tone is generated in an AudioWorklet with a float64 phase accumulator (<code>phase += f / sampleRate</code>), so frequency error is bounded by the audio clock (≈ parts per million), not by float32 oscillator parameters or codec artefacts. Frequency and level changes glide linearly per sample. The WAV exporter runs the identical code offline.</p>
+    </details>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="col-r">
+  <div class="panel">
+    <h2>Presets <span class="r tiny">click to load into layers</span></h2>
+    <div class="tiny" style="margin-bottom:6px">Measured Gateway tapes</div>
+    <div class="chips" id="chipsFocus"></div>
+    <div class="tiny" style="margin:8px 0 6px">Wave I / II tapes</div>
+    <div class="chips" id="chipsWave"></div>
+    <div class="tiny" style="margin:8px 0 6px">Patents · CIA · bands</div>
+    <div class="chips" id="chipsOther"></div>
+  </div>
+
+  <div class="panel seq">
+    <h2>Sequencer <span class="r"><span class="badge" id="seqBadge">stopped</span></span></h2>
+    <div class="row"><label>Programs</label><select id="seqPreset"></select><button id="btnSeqLoad">Load</button></div>
+    <div id="steps"></div>
+    <div class="row"><button id="btnStepAdd" style="flex:1">+ step from current layers</button></div>
+    <div class="bar"><i id="seqBar"></i></div>
+    <div class="row" style="justify-content:space-between"><span class="tiny" id="seqInfo">—</span><span class="tiny" id="seqTotal"></span></div>
+    <div class="transport">
+      <button class="primary" id="btnSeqRun">▶ Run sequence</button>
+      <button id="btnHold" disabled>⏸ Hold</button>
+      <button id="btnExtend" disabled>+5 min</button>
+      <button id="btnSkip" disabled>⏭</button>
+    </div>
+    <div class="tiny" style="margin-top:6px">Hold freezes the clock on the current step (frequencies keep playing). Each step glides from the previous one over its glide time.</div>
+  </div>
+</div>
+</main>
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   DSP ENGINE — shared by the AudioWorklet and the offline WAV renderer
+   ============================================================ */
+const ENGINE_SRC = `
+class HemiEngine {
+  constructor(sr){
+    this.sr = sr; this.layers = new Map(); this.master = {v:0,t:0,n:0};
+    this.noise = {kind:'off', g:{v:0,t:0,n:0}, panPeriod:0, panPhase:0, surfPeriod:11, surfPhase:0, surfTargetPeriod:11,
+      pL:[0,0,0,0,0,0,0], pR:[0,0,0,0,0,0,0], bL:0, bR:0, lpL:0, lpR:0};
+    this.clips = 0; this.peakL=0; this.peakR=0;
+    this.rng = 0x9E3779B9 >>> 0;
+  }
+  rand(){ // xorshift32 -> [-1,1)
+    let x = this.rng; x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; this.rng = x;
+    return (x / 2147483648) - 1;
+  }
+  static ramp(p){ if(p.n>0){ p.v += (p.t - p.v)/p.n; p.n--; } else p.v = p.t; return p.v; }
+  setMaster(gainLin, glideSec){ this.master.t = gainLin; this.master.n = Math.max(0, Math.round(glideSec*this.sr)); }
+  setNoise(kind, gainLin, panPeriod, surfPeriod, glideSec){
+    const n=this.noise; n.kind=kind; n.g.t=gainLin; n.g.n=Math.max(0,Math.round(glideSec*this.sr)); n.panPeriod=panPeriod; n.surfTargetPeriod=surfPeriod;
+  }
+  // layers: [{id, mode, fL, fR, fC, beat, gain}] ; absent ids are faded out & removed
+  setLayers(list, glideSec){
+    const n = Math.max(0, Math.round(glideSec*this.sr));
+    const seen = new Set();
+    for(const L of list){
+      seen.add(L.id);
+      let s = this.layers.get(L.id);
+      if(!s){ s = {id:L.id, mode:L.mode, fL:{v:L.fL,t:L.fL,n:0}, fR:{v:L.fR,t:L.fR,n:0}, fC:{v:L.fC,t:L.fC,n:0}, fB:{v:L.beat,t:L.beat,n:0},
+                   g:{v:0,t:L.gain,n:n}, phL:0, phR:0, phC:0, phB:0, dead:false}; this.layers.set(L.id,s); }
+      else { s.mode=L.mode; s.fL.t=L.fL; s.fL.n=n; s.fR.t=L.fR; s.fR.n=n; s.fC.t=L.fC; s.fC.n=n; s.fB.t=L.beat; s.fB.n=n; s.g.t=L.gain; s.g.n=n; s.dead=false; }
+    }
+    for(const [id,s] of this.layers){ if(!seen.has(id)){ s.g.t=0; s.g.n=n; s.dead=true; } }
+  }
+  render(outL, outR, nFrames){
+    const sr = this.sr, TAU = Math.PI*2, R = HemiEngine.ramp, N = this.noise;
+    let pkL=0, pkR=0, clips=0;
+    for(let i=0;i<nFrames;i++){
+      let l=0, r=0;
+      for(const s of this.layers.values()){
+        const g = R(s.g);
+        if(s.dead && s.g.n===0 && g<1e-6){ this.layers.delete(s.id); continue; }
+        if(s.mode==='binaural'){
+          const fl=R(s.fL), fr=R(s.fR);
+          s.phL += fl/sr; if(s.phL>=1) s.phL-=1;
+          s.phR += fr/sr; if(s.phR>=1) s.phR-=1;
+          l += Math.sin(TAU*s.phL)*g; r += Math.sin(TAU*s.phR)*g;
+        } else if(s.mode==='monaural'){
+          const fl=R(s.fL), fr=R(s.fR);
+          s.phL += fl/sr; if(s.phL>=1) s.phL-=1;
+          s.phR += fr/sr; if(s.phR>=1) s.phR-=1;
+          const v = (Math.sin(TAU*s.phL)+Math.sin(TAU*s.phR))*0.5*g;
+          l += v; r += v;
+        } else { // isochronic: single tone, raised-cosine amplitude pulse at beat rate
+          const fc=R(s.fC), fb=R(s.fB);
+          s.phC += fc/sr; if(s.phC>=1) s.phC-=1;
+          s.phB += fb/sr; if(s.phB>=1) s.phB-=1;
+          const env = 0.5*(1-Math.cos(TAU*s.phB));
+          const v = Math.sin(TAU*s.phC)*env*g; l += v; r += v;
+        }
+      }
+      // noise bed
+      const ng = R(N.g);
+      if(N.kind!=='off' && ng>0){
+        let wl=this.rand(), wr=this.rand(), nl, nr;
+        if(N.kind==='white'){ nl=wl*0.5; nr=wr*0.5; }
+        else if(N.kind==='brown'){ N.bL=(N.bL+0.02*wl)/1.02; N.bR=(N.bR+0.02*wr)/1.02; nl=N.bL*3.5; nr=N.bR*3.5; }
+        else { // pink (Paul Kellet refined) for pink & surf
+          const p=N.pL; p[0]=0.99886*p[0]+wl*0.0555179; p[1]=0.99332*p[1]+wl*0.0750759; p[2]=0.96900*p[2]+wl*0.1538520;
+          p[3]=0.86650*p[3]+wl*0.3104856; p[4]=0.55000*p[4]+wl*0.5329522; p[5]=-0.7616*p[5]-wl*0.0168980;
+          nl=(p[0]+p[1]+p[2]+p[3]+p[4]+p[5]+p[6]+wl*0.5362)*0.11; p[6]=wl*0.115926;
+          const q=N.pR; q[0]=0.99886*q[0]+wr*0.0555179; q[1]=0.99332*q[1]+wr*0.0750759; q[2]=0.96900*q[2]+wr*0.1538520;
+          q[3]=0.86650*q[3]+wr*0.3104856; q[4]=0.55000*q[4]+wr*0.5329522; q[5]=-0.7616*q[5]-wr*0.0168980;
+          nr=(q[0]+q[1]+q[2]+q[3]+q[4]+q[5]+q[6]+wr*0.5362)*0.11; q[6]=wr*0.115926;
+          if(N.kind==='surf'){
+            N.surfPeriod += (N.surfTargetPeriod-N.surfPeriod)*1e-5;
+            N.surfPhase += 1/(N.surfPeriod*sr); if(N.surfPhase>=1) N.surfPhase-=1;
+            const sw = Math.pow(0.5*(1-Math.cos(TAU*N.surfPhase)), 1.6); // asymmetric swell
+            const a = 0.25 + 0.75*sw;
+            // gentle lowpass that opens with the swell
+            const k = 0.02 + 0.25*sw;
+            N.lpL += k*(nl-N.lpL); N.lpR += k*(nr-N.lpR);
+            nl = N.lpL*a*1.8; nr = N.lpR*a*1.8;
+          }
+        }
+        if(N.panPeriod>0){
+          N.panPhase += 1/(N.panPeriod*sr); if(N.panPhase>=1) N.panPhase-=1;
+          const pan = 0.5*(1+Math.sin(TAU*N.panPhase)); // 0..1
+          const mono = (nl+nr)*0.5;
+          nl = mono*Math.cos(pan*Math.PI/2)*1.3; nr = mono*Math.sin(pan*Math.PI/2)*1.3;
+        }
+        l += nl*ng; r += nr*ng;
+      }
+      const m = R(this.master);
+      l*=m; r*=m;
+      if(l>1){l=1;clips++;} else if(l<-1){l=-1;clips++;}
+      if(r>1){r=1;clips++;} else if(r<-1){r=-1;clips++;}
+      const al=Math.abs(l), ar=Math.abs(r); if(al>pkL)pkL=al; if(ar>pkR)pkR=ar;
+      outL[i]=l; outR[i]=r;
+    }
+    this.peakL=pkL; this.peakR=pkR; this.clips+=clips;
+  }
+}
+`;
+const WORKLET_SRC = ENGINE_SRC + `
+class HemiProcessor extends AudioWorkletProcessor {
+  constructor(){ super(); this.e = new HemiEngine(sampleRate); this.frames=0;
+    this.port.onmessage = (ev)=>{ const m=ev.data;
+      if(m.type==='layers') this.e.setLayers(m.layers, m.glide);
+      else if(m.type==='master') this.e.setMaster(m.gain, m.glide);
+      else if(m.type==='noise') this.e.setNoise(m.kind, m.gain, m.panPeriod, m.surfPeriod, m.glide);
+      else if(m.type==='reseed') this.e.rng = (Math.random()*0xFFFFFFFF)>>>0 || 1;
+    };
+  }
+  process(inputs, outputs){
+    const out = outputs[0]; if(!out || out.length<2) return true;
+    this.e.render(out[0], out[1], out[0].length);
+    this.frames += out[0].length;
+    if(this.frames >= sampleRate/20){ this.frames=0;
+      this.port.postMessage({type:'meter', l:this.e.peakL, r:this.e.peakR, clips:this.e.clips, layers:this.e.layers.size}); this.e.clips=0; }
+    return true;
+  }
+}
+registerProcessor('hemi-processor', HemiProcessor);
+`;
+
+/* ============================================================
+   DATA — presets
+   ============================================================ */
+const dB = x => Math.pow(10, x/20);
+const toDB = x => x>0 ? 20*Math.log10(x) : -Infinity;
+const band = f => f<0.5?'sub':f<4?'delta':f<8?'theta':f<13?'alpha':f<30?'beta':'gamma';
+let _id = 1; const nid = () => 'L'+(_id++);
+
+// Measured-tape notation parser. "100[1.5] 200[4.0]"  |  "l/r 100/104, 300/304"  |  "L100 R104"
+function parseNotation(str){
+  const out=[]; const s=str.trim();
+  if(!s) return out;
+  const lr = s.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/g);
+  if(/l\s*\/\s*r/i.test(s) && lr){
+    for(const p of lr){ const [a,b]=p.split('/').map(Number); out.push(mkLayer({fL:a,fR:b})); }
+    return out;
+  }
+  const re=/(\d+(?:\.\d+)?)\s*\[\s*(-?\d+(?:\.\d+)?)\s*\]/g; let m;
+  while((m=re.exec(s))){ out.push(mkLayer({fC:+m[1], beat:+m[2]})); }
+  if(!out.length && lr){ for(const p of lr){ const [a,b]=p.split('/').map(Number); out.push(mkLayer({fL:a,fR:b})); } }
+  return out;
+}
+// A layer is stored as {id, mode, fC, beat, gain(dB)}; fL/fR derived: fC ∓ beat/2
+function mkLayer(o){
+  const L = {id:nid(), mode:o.mode||'binaural', gainDB: o.gainDB ?? 0};
+  if(o.fL!=null && o.fR!=null){ L.fC = +( (o.fL+o.fR)/2 ).toFixed(6); L.beat = +(o.fR-o.fL).toFixed(6); }
+  else { L.fC = o.fC; L.beat = o.beat; }
+  return L;
+}
+const N = parseNotation;
+function set(name, notation, note, opts={}){ return {name, note, layers:()=>N(notation).map(l=>Object.assign(l,opts)), notation}; }
+
+const PRESETS_FOCUS = [
+  set('F3',  '59[1.2] 110[1.3] 288[3.7]', 'Orientation / basic Hemi-Sync. Measured set 1.'),
+  set('F10', '100[1.5] 200[4.0] 250[4.0] 300[4.0]', 'Mind awake / body asleep. 1.5 Hz delta anchor on 100 Hz + 4 Hz theta cluster.'),
+  set('F12', '100[1.5] 200[4.0] 250[4.0] 300[4.0] 400[10.0] 500[10.1] 600[4.8]', 'Expanded awareness. F10 bed + 10/10.1 Hz alpha overlays on 400/500 Hz (the 0.1 Hz difference makes the two alpha beats drift against each other).'),
+  set('F12 (set 2)', '50[0.25] 100[1.5] 200[4.0] 250[4.0] 300[4.0] 400[10.0] 500[10.1] 600[4.8]', 'Second measurement adds a 0.25 Hz sub-delta on 50 Hz.'),
+  set('F15', '100[1.5] 200[4.0] 250[4.0] 300[4.0] 500[7.05] 630[7.1] 750[7.0]', 'No time. F10 bed + ~7 Hz (theta/alpha border, Bentov body resonance) on 500/630/750.'),
+  set('F21', '200[4.0] 250[4.0] 300[4.0] 600[16.2] 750[15.9] 900[16.2]', 'Bridge to other energy systems. Theta bed + 16 Hz beta on high carriers (right-hemisphere activation per CIA paper).'),
+  set('F21 (alt)', '200[4.0] 250[5.4] 300[5.4] 600[16.2] 750[16.2] 900[16.2]', 'Alternate F21 measurement with 5.4 Hz on 250/300.'),
+  set('F22', '200[4.0] 250[4.0] 300[4.0] 600[16.2] 750[16.2] 900[16.2]', 'Same tone set as F21.'),
+  set('F23', '400[3.9] 503[4.0] 600[4.0] 750[3.9] 900[4.0]', 'Carriers move up to 400–900 Hz; beats near 4 Hz with slight 0.1 Hz offsets.'),
+  set('F24', '50[0.75] 200[1.5] 400[3.9] 503[4.0] 600[4.0] 750[4.0] 900[4.0]', 'Adds 0.75 Hz on 50 Hz and 1.5 Hz on 200 Hz (set 2).'),
+  set('F25', '503[4.0] 600[4.0] 750[4.0] 900[4.0]', ''),
+  set('F26', '400[3.9] 503[4.2] 600[4.0] 750[4.0] 900[4.0]', ''),
+  set('F27', '50[0.80] 400[4.0] 503[4.2] 600[4.0] 750[4.0] 900[4.0]', 'The Park. Set 2 adds 0.8 Hz on 50 Hz.'),
+];
+const PRESETS_WAVE = [
+  set('W1-T1 Orientation', 'l/r 100/100, 300/304, 500/500', 'Hemi-Sync intro, Energy Conversion Box, Affirmation, Resonant Tuning. 300/304 beat plus plain 100 & 500 Hz carriers.'),
+  set('W1-T2 Intro F10', '100[4.0] 300[4.0] 500[4.0]', 'Ten-point relaxation.'),
+  set('W1-T4 Release & Recharge', 'l/r 100/104, 414/410, 504/500', 'Note the reversed beat direction on the upper carriers (R lower than L).'),
+  set('W1-T5 Exploration Sleep', 'l/r 100/104, 300/304, 496/500', 'Rolling out, floating upward.'),
+  set('W1-T6 F10 Free Flow', 'l/r 100/104, 300/304, 500/504', 'Plus a "C1" overlay 308/322, 500/515 (14–15 Hz beta) – see next preset.'),
+  set('W1-T6 C1 overlay', 'l/r 308/322, 500/515', '14/15 Hz beta overlay measured on the free-flow tape.', {gainDB:-6}),
+  set('W2-T1 Intro F12', 'l/r 51/51.75, 98.75/101', 'Low carriers, 0.75 + 2.25 Hz delta.'),
+  set('W2-T2 Problem Solving', 'l/r 99.5/101, 202.7/204.2', '1.5 Hz on 100 and 203 Hz.'),
+];
+const PRESETS_OTHER = [
+  {name:'Patent Septon (4 Hz)', note:'US 5,356,368: L 200/204/208 vs R 204/208/212 → three 4 Hz binaural beats plus two 4 Hz monaural beats per ear (seven beats = "Septon").',
+   layers:()=>[mkLayer({fL:200,fR:204}),mkLayer({fL:204,fR:208}),mkLayer({fL:208,fR:212})]},
+  {name:'Patent 275 Hz carrier', note:'US 5,213,562 names 275 Hz as the most effective harmonic carrier (Oersted curve); 4 Hz theta.', layers:()=>[mkLayer({fC:275,beat:4})]},
+  {name:'Patent wake-up 400/416', note:'Beta wake-up envelope from the Sleep Processor embodiment.', layers:()=>[mkLayer({fL:400,fR:416})]},
+  {name:'CIA 7 Hz resonance', note:'Bentov/McDonnell: body + ionospheric cavity resonance 6.8–7.5 Hz; 200 Hz carrier.', layers:()=>[mkLayer({fC:200,beat:7.0})]},
+  {name:'CIA OBE beta 28.8', note:'"Beta signals of around 2877.3 CPS" read as 28.77 Hz; layered over the F10 theta bed as condition (3) of the OBE recipe.', layers:()=>[...N('100[1.5] 200[4.0] 250[4.0] 300[4.0]'), Object.assign(mkLayer({fC:500,beat:28.77}),{gainDB:-6})]},
+  {name:'Schumann 7.83', note:'7.83 Hz on 136.1 Hz ("Om" carrier popularised by later apps – not a Monroe value).', layers:()=>[mkLayer({fC:136.1,beat:7.83})]},
+  {name:'Blog F10 entry (10 Hz)', note:'sine-immersive protocol start: 200 Hz carrier, 10 Hz alpha, descend to 7 Hz.', layers:()=>[mkLayer({fL:200,fR:210})]},
+  {name:'Delta 2 Hz', note:'', layers:()=>[mkLayer({fC:200,beat:2})]},
+  {name:'Theta 6 Hz', note:'', layers:()=>[mkLayer({fC:200,beat:6})]},
+  {name:'Alpha 10 Hz', note:'', layers:()=>[mkLayer({fC:200,beat:10})]},
+  {name:'SMR 14 Hz', note:'', layers:()=>[mkLayer({fC:250,beat:14})]},
+  {name:'Gamma 40 Hz', note:'', layers:()=>[mkLayer({fC:300,beat:40})]},
+  {name:'Isochronic 4 Hz', note:'Single 250 Hz tone pulsed at 4 Hz (works on speakers too).', layers:()=>[mkLayer({fC:250,beat:4,mode:'isochronic'})]},
+];
+const byName = n => [...PRESETS_FOCUS,...PRESETS_WAVE,...PRESETS_OTHER].find(p=>p.name===n);
+
+// Sequencer programs: steps {name, layers, min, glide}
+const noiseDefault = {kind:'pink', gainDB:-38, panPeriod:0, surfPeriod:11};
+function stepFrom(name, layers, min, glide=60, noise=null){ return {name, layers, min, glide, noise}; }
+const SEQ_PROGRAMS = {
+  'Gateway journey F10→F12→F15→F21→return (62 min)': ()=>[
+    stepFrom('Orientation F3', byName('F3').layers(), 4, 20),
+    stepFrom('Focus 10', byName('F10').layers(), 12, 90),
+    stepFrom('Focus 12', byName('F12').layers(), 12, 120),
+    stepFrom('Focus 15', byName('F15').layers(), 12, 120),
+    stepFrom('Focus 21', byName('F21').layers(), 12, 120),
+    stepFrom('Return F12', byName('F12').layers(), 4, 90),
+    stepFrom('Return F10', byName('F10').layers(), 4, 90),
+    stepFrom('Wake 400/416', byName('Patent wake-up 400/416').layers(), 2, 60),
+  ],
+  'Focus 10 practice (25 min, blog protocol)': ()=>[
+    stepFrom('Alpha on-ramp 10 Hz', [mkLayer({fL:200,fR:210})], 5, 10),
+    stepFrom('Descend → 7 Hz', [mkLayer({fL:200,fR:207})], 7, 7*60), // 0.43 Hz/min, glide spans the whole step
+    stepFrom('Hold 7 Hz (F10)', [mkLayer({fL:200,fR:207})], 8, 5),
+    stepFrom('Return 10 Hz', [mkLayer({fL:200,fR:210})], 5, 4*60),
+  ],
+  'Focus 10 measured (30 min)': ()=>[
+    stepFrom('F3', byName('F3').layers(), 5, 20),
+    stepFrom('F10', byName('F10').layers(), 22, 90),
+    stepFrom('Return', byName('W1-T6 C1 overlay').layers().concat(byName('F10').layers()), 3, 60),
+  ],
+  'Focus 12 (35 min, blog protocol)': ()=>[
+    stepFrom('10 Hz', [mkLayer({fL:200,fR:210})], 4, 10),
+    stepFrom('→ 7 Hz', [mkLayer({fL:200,fR:207})], 6, 6*60),
+    stepFrom('→ 5 Hz', [mkLayer({fL:200,fR:205})], 5, 5*60),
+    stepFrom('Hold 4.5 Hz (F12)', [mkLayer({fL:200,fR:204.5})], 10, 2*60),
+    stepFrom('→ 7 Hz', [mkLayer({fL:200,fR:207})], 4, 3*60),
+    stepFrom('→ 10 Hz', [mkLayer({fL:200,fR:210})], 3, 2*60),
+    stepFrom('→ 13 Hz wake', [mkLayer({fL:200,fR:213})], 3, 2*60),
+  ],
+  'Focus 15 (45 min, blog protocol)': ()=>[
+    stepFrom('10 Hz', [mkLayer({fL:200,fR:210})], 4, 10),
+    stepFrom('→ 7 Hz', [mkLayer({fL:200,fR:207})], 6, 6*60),
+    stepFrom('→ 4 Hz', [mkLayer({fL:200,fR:204})], 5, 5*60),
+    stepFrom('→ 2 Hz', [mkLayer({fL:200,fR:202})], 5, 5*60),
+    stepFrom('Hold 2.5 Hz (F15)', [mkLayer({fL:200,fR:202.5})], 15, 60, {kind:'off',gainDB:-60,panPeriod:0,surfPeriod:11}),
+    stepFrom('→ 4 Hz', [mkLayer({fL:200,fR:204})], 3, 3*60),
+    stepFrom('→ 7 Hz', [mkLayer({fL:200,fR:207})], 3, 3*60),
+    stepFrom('→ 13 Hz wake', [mkLayer({fL:200,fR:213})], 4, 3*60),
+  ],
+  'All focus levels, 10 min each (sbagen t-seqall)': ()=>['F10','F12','F15','F21','F22','F23','F24','F25','F26','F27'].map(n=>stepFrom(n, byName(n).layers(), 10, 120)),
+  'Patent sleep processor (90-min cycle ×1 + wake)': ()=>[
+    stepFrom('Alpha 10 Hz', [mkLayer({fC:200,beat:10})], 5, 10),
+    stepFrom('Theta 5 Hz', [mkLayer({fC:200,beat:5})], 15, 180),
+    stepFrom('Delta 2 Hz', [mkLayer({fC:200,beat:2}), Object.assign(mkLayer({fC:100,beat:1}),{gainDB:-10})], 50, 240, {kind:'pink',gainDB:-40,panPeriod:6,surfPeriod:11}),
+    stepFrom('Theta 5 Hz', [mkLayer({fC:200,beat:5})], 15, 240),
+    stepFrom('Theta-alpha fade-in', [mkLayer({fC:200,beat:8})], 3, 120),
+    stepFrom('Beta 16 Hz wake (400/416)', [mkLayer({fL:400,fR:416})], 2, 60),
+  ],
+  'OBE recipe per CIA paper (40 min)': ()=>[
+    stepFrom('(1) Quiet: F10 bed', byName('F10').layers(), 12, 90),
+    stepFrom('(1) 7 Hz resonance', byName('F15').layers(), 10, 120),
+    stepFrom('(2) Sync hold', byName('F15').layers(), 6, 10),
+    stepFrom('(3) Right-hemisphere beta', byName('CIA OBE beta 28.8').layers(), 10, 120),
+    stepFrom('Return', byName('F10').layers(), 2, 60),
+  ],
+};
+
+/* ============================================================
+   STATE + AUDIO
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const state = {
+  layers: byName('F10').layers(),
+  masterDB: -18, fade: 8, glide: 10,
+  noise: {...noiseDefault},
+  playing:false, ctx:null, node:null, splitter:null, anL:null, anR:null, startTime:0,
+  seq: {steps:[], running:false, idx:-1, stepStart:0, held:false, heldAt:0, extended:0, timer:null},
+};
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
+
+async function ensureAudio(){
+  if(state.ctx) { if(state.ctx.state==='suspended') await state.ctx.resume(); return; }
+  const ctx = new (window.AudioContext||window.webkitAudioContext)({latencyHint:'playback'});
+  const b64 = 'data:application/javascript;base64,'+btoa(unescape(encodeURIComponent(WORKLET_SRC)));
+  try { await ctx.audioWorklet.addModule(b64); }
+  catch(e){ const blob = new Blob([WORKLET_SRC], {type:'application/javascript'}); await ctx.audioWorklet.addModule(URL.createObjectURL(blob)); }
+  const node = new AudioWorkletNode(ctx, 'hemi-processor', {numberOfInputs:0, numberOfOutputs:1, outputChannelCount:[2]});
+  const splitter = ctx.createChannelSplitter(2);
+  const anL = ctx.createAnalyser(), anR = ctx.createAnalyser();
+  anL.fftSize = anR.fftSize = 16384; anL.smoothingTimeConstant = anR.smoothingTimeConstant = 0.6;
+  node.connect(splitter); splitter.connect(anL,0); splitter.connect(anR,1);
+  node.connect(ctx.destination);
+  node.port.onmessage = ev => { const m=ev.data; if(m.type==='meter') updateMeters(m); };
+  node.port.postMessage({type:'reseed'});
+  Object.assign(state,{ctx,node,splitter,anL,anR});
+  $('#srStat').textContent = ctx.sampleRate+' Hz';
+  $('#latStat').textContent = 'latency '+((ctx.baseLatency||0)*1000).toFixed(1)+' ms';
+  $('#engineBadge').textContent='engine: AudioWorklet float64'; $('#engineBadge').classList.add('on');
+  await ctx.resume();
+}
+
+function layerPayload(ls){
+  // auto-headroom: scale so the worst-case sum of all active layers never exceeds 0 dBFS before master
+  const act = ls.filter(L=>!L.mute); const sum = act.reduce((a,L)=>a+dB(L.gainDB),0); const norm = 1/Math.max(1,sum);
+  return ls.map(L=>{
+    const fL = L.fC - L.beat/2, fR = L.fC + L.beat/2;
+    return {id:L.id, mode:L.mode, fL, fR, fC:L.fC, beat:L.beat, gain: dB(L.gainDB) * norm * (L.mute?0:1)};
+  });
+}
+function pushLayers(glide=state.glide){ if(state.node) state.node.port.postMessage({type:'layers', layers:layerPayload(state.layers), glide}); }
+function pushMaster(glide=0.05){ if(state.node) state.node.port.postMessage({type:'master', gain:dB(state.masterDB), glide}); }
+function pushNoise(glide=state.glide){ if(state.node){ const n=state.noise; state.node.port.postMessage({type:'noise', kind:n.kind, gain:dB(n.gainDB), panPeriod:n.panPeriod, surfPeriod:n.surfPeriod, glide}); } }
+
+async function start(){
+  await ensureAudio();
+  state.playing=true; state.startTime=state.ctx.currentTime;
+  state.node.port.postMessage({type:'master', gain:0, glide:0});
+  pushLayers(0.5); pushNoise(0.5);
+  state.node.port.postMessage({type:'master', gain:dB(state.masterDB), glide:state.fade});
+  $('#btnPlay').textContent='▶ Playing'; $('#btnPlay').disabled=true; $('#btnStop').disabled=false;
+  requestAnimationFrame(draw);
+}
+function stop(){
+  if(!state.ctx) return;
+  state.node.port.postMessage({type:'master', gain:0, glide:state.fade});
+  state.playing=false; seqStop(false);
+  $('#btnPlay').textContent='▶ Start'; $('#btnPlay').disabled=false; $('#btnStop').disabled=true;
+  setTimeout(()=>{ if(!state.playing && state.ctx && state.ctx.state==='running') state.ctx.suspend(); }, state.fade*1000+300);
+}
+
+/* ============================================================
+   UI — layers
+   ============================================================ */
+function renderLayers(){
+  const tb = $('#layerBody'); tb.innerHTML='';
+  state.layers.forEach((L,i)=>{
+    const tr=document.createElement('tr');
+    const fL=L.fC-L.beat/2, fR=L.fC+L.beat/2; const b=band(Math.abs(L.beat));
+    tr.innerHTML = `
+      <td><input type="checkbox" ${L.mute?'':'checked'} title="on/off" data-k="on"></td>
+      <td><select data-k="mode"><option value="binaural"${L.mode==='binaural'?' selected':''}>binaural</option><option value="monaural"${L.mode==='monaural'?' selected':''}>monaural</option><option value="isochronic"${L.mode==='isochronic'?' selected':''}>isochronic</option></select></td>
+      <td><input type="number" data-k="fC" value="${L.fC}" step="0.1" min="20" max="1500"></td>
+      <td><input type="number" data-k="beat" value="${L.beat}" step="0.05" min="-60" max="60"></td>
+      <td><input type="number" data-k="gainDB" value="${L.gainDB}" step="1" min="-60" max="6" style="width:64px"></td>
+      <td class="lr">${fL.toFixed(3)} / ${fR.toFixed(3)}</td>
+      <td><span class="band ${b}">${b} ${Math.abs(L.beat).toFixed(2)}</span></td>
+      <td><button class="x" data-k="del" title="remove">×</button></td>`;
+    tr.querySelectorAll('[data-k]').forEach(el=>{
+      const k=el.dataset.k;
+      if(k==='del') el.onclick=()=>{ state.layers.splice(i,1); renderLayers(); pushLayers(); };
+      else if(k==='on') el.onchange=()=>{ L.mute=!el.checked; pushLayers(2); };
+      else el.onchange=el.oninput=()=>{ let v = el.type==='number'?parseFloat(el.value):el.value; if(el.type==='number'&&!isFinite(v)) return; L[k]=v; if(k!=='mode'){ const fL=L.fC-L.beat/2, fR=L.fC+L.beat/2; tr.querySelector('.lr').textContent=fL.toFixed(3)+' / '+fR.toFixed(3); const bb=band(Math.abs(L.beat)); tr.querySelector('.band').className='band '+bb; tr.querySelector('.band').textContent=bb+' '+Math.abs(L.beat).toFixed(2);} pushLayers(); updateBeatBig(); };
+    });
+    tb.appendChild(tr);
+  });
+  updateBeatBig();
+}
+function updateBeatBig(){
+  const act = state.layers.filter(l=>!l.mute);
+  if(!act.length){ $('#beatBig').textContent='— Hz'; $('#beatSub').textContent='no layers'; return; }
+  // dominant = highest-gain layer; summarise distinct beats
+  const beats=[...new Set(act.map(l=>Math.abs(l.beat).toFixed(2)))];
+  const dom = act.reduce((a,b)=>b.gainDB>a.gainDB?b:a);
+  $('#beatBig').textContent = Math.abs(dom.beat).toFixed(2)+' Hz';
+  $('#beatSub').textContent = band(Math.abs(dom.beat))+' · '+act.length+' layer'+(act.length>1?'s':'')+' · beats '+beats.join(' / ')+' Hz · carriers '+act.map(l=>l.fC).join('/')+' Hz';
+}
+function loadPreset(p, additive=false){
+  const ls = p.layers();
+  state.layers = additive ? state.layers.concat(ls) : ls;
+  renderLayers(); pushLayers();
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('sel', c.textContent===p.name));
+  toast((additive?'Added ':'Loaded ')+p.name+(p.note?' — '+p.note:''));
+}
+function chips(el, list){
+  list.forEach(p=>{ const c=document.createElement('span'); c.className='chip'; c.textContent=p.name; c.title=(p.note||'')+(p.notation?'\n'+p.notation:'')+'\n(shift+click = add to current layers)';
+    c.onclick=e=>loadPreset(p, e.shiftKey); el.appendChild(c); });
+}
+chips($('#chipsFocus'), PRESETS_FOCUS); chips($('#chipsWave'), PRESETS_WAVE); chips($('#chipsOther'), PRESETS_OTHER);
+
+$('#btnAddLayer').onclick=()=>{ state.layers.push(mkLayer({fC:200,beat:4})); renderLayers(); pushLayers(); };
+$('#btnClear').onclick=()=>{ state.layers=[]; renderLayers(); pushLayers(); };
+$('#btnParse').onclick=()=>{ const ls=parseNotation($('#notation').value); if(!ls.length) return toast('Could not parse notation'); state.layers=ls; renderLayers(); pushLayers(); toast('Applied '+ls.length+' layers'); };
+$('#notation').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#btnParse').click(); });
+
+/* ============================================================
+   UI — transport, sliders, noise
+   ============================================================ */
+$('#btnPlay').onclick=start; $('#btnStop').onclick=stop;
+function bindSlider(id, fmt, cb){ const el=$('#'+id), v=$('#'+id+'V'); const f=()=>{ v.textContent=fmt(+el.value); cb(+el.value); }; el.oninput=f; f(); }
+bindSlider('master', x=>x+' dB', x=>{ state.masterDB=x; if(state.playing) pushMaster(); });
+bindSlider('fade', x=>x+' s', x=>state.fade=x);
+bindSlider('glide', x=>x+' s', x=>state.glide=x);
+bindSlider('noiseGain', x=>x+' dB', x=>{ state.noise.gainDB=x; pushNoise(0.3); });
+bindSlider('noisePan', x=>x?x+' s':'off', x=>{ state.noise.panPeriod=x; pushNoise(0.3); });
+bindSlider('surfPeriod', x=>x+' s', x=>{ state.noise.surfPeriod=x; pushNoise(0.3); });
+$('#noiseType').onchange=e=>{ state.noise.kind=e.target.value; pushNoise(1); };
+
+function updateMeters(m){
+  const set=(id,v)=>{ const el=$('#'+id); el.querySelector('i').style.width=Math.min(100, (toDB(v)+60)/60*100)+'%'; el.classList.toggle('clip', v>=0.999); };
+  set('meterL',m.l); set('meterR',m.r);
+  $('#clipNote').textContent = m.clips? '⚠ clipping ('+m.clips+' samples) — lower master or layer levels' : 'peak L '+toDB(m.l).toFixed(1)+' dBFS · R '+toDB(m.r).toFixed(1)+' dBFS · '+m.layers+' voices';
+}
+
+// headphone L/R test
+async function chanTest(side){ await ensureAudio(); const ctx=state.ctx; const o=ctx.createOscillator(); o.frequency.value=side==='L'?330:440; const g=ctx.createGain(); g.gain.value=0.12; const m=ctx.createChannelMerger(2); o.connect(g); g.connect(m, 0, side==='L'?0:1); m.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.6); toast(side==='L'?'Left channel (330 Hz)':'Right channel (440 Hz)'); if(!state.playing) setTimeout(()=>{ if(!state.playing) ctx.suspend(); },800); }
+$('#hpL').onclick=()=>chanTest('L'); $('#hpR').onclick=()=>chanTest('R');
+
+/* ============================================================
+   Visualiser
+   ============================================================ */
+const specC=$('#spec'), scopeC=$('#scope');
+function fitCanvas(c){ const r=c.getBoundingClientRect(); const dpr=window.devicePixelRatio||1; if(c.width!==Math.round(r.width*dpr)){ c.width=Math.round(r.width*dpr); c.height=Math.round(parseInt(c.getAttribute('height'))*dpr);} return c.getContext('2d'); }
+let specBufL, specBufR, timeL, timeR;
+function draw(){
+  if(!state.ctx) return;
+  const anL=state.anL, anR=state.anR; const sr=state.ctx.sampleRate;
+  if(!specBufL){ specBufL=new Float32Array(anL.frequencyBinCount); specBufR=new Float32Array(anR.frequencyBinCount); timeL=new Float32Array(2048); timeR=new Float32Array(2048); }
+  anL.getFloatFrequencyData(specBufL); anR.getFloatFrequencyData(specBufR);
+  const g=fitCanvas(specC), W=specC.width, H=specC.height; g.clearRect(0,0,W,H);
+  const fmax=1000, binHz=sr/anL.fftSize, nb=Math.min(specBufL.length, Math.floor(fmax/binHz));
+  // grid
+  g.strokeStyle='#182230'; g.lineWidth=1; g.fillStyle='#51637a'; g.font=(10*(window.devicePixelRatio||1))+'px monospace';
+  for(let f=100;f<fmax;f+=100){ const x=f/fmax*W; g.beginPath(); g.moveTo(x,0); g.lineTo(x,H); g.stroke(); g.fillText(f,x+3,H-4); }
+  const yOf = v => H - Math.max(0,(v+100)/100)*H; // -100..0 dB
+  const plot=(buf,col)=>{ g.strokeStyle=col; g.lineWidth=1.2; g.beginPath(); for(let i=0;i<nb;i++){ const x=i*binHz/fmax*W, y=yOf(buf[i]); i?g.lineTo(x,y):g.moveTo(x,y);} g.stroke(); };
+  plot(specBufL,'#5ad1ff'); plot(specBufR,'#b48cff');
+  // layer markers
+  g.fillStyle='#ffffff22'; state.layers.filter(l=>!l.mute).forEach(l=>{ const x=l.fC/fmax*W; g.fillRect(x-1,0,2,H); });
+  // scope
+  anL.getFloatTimeDomainData(timeL); anR.getFloatTimeDomainData(timeR);
+  const s=fitCanvas(scopeC), W2=scopeC.width, H2=scopeC.height; s.clearRect(0,0,W2,H2);
+  s.strokeStyle='#182230'; s.beginPath(); s.moveTo(0,H2/2); s.lineTo(W2,H2/2); s.stroke();
+  const sc=(buf,col,off)=>{ s.strokeStyle=col; s.lineWidth=1; s.beginPath(); for(let i=0;i<buf.length;i++){ const x=i/buf.length*W2, y=H2/2+off - buf[i]*H2*0.9; i?s.lineTo(x,y):s.moveTo(x,y);} s.stroke(); };
+  sc(timeL,'#5ad1ff',0); sc(timeR,'#b48cff',0);
+  // clocks
+  if(state.playing){ const t=state.ctx.currentTime-state.startTime; $('#sessClock').textContent=fmtT(t); }
+  seqTick();
+  requestAnimationFrame(draw);
+}
+const fmtT = t => { t=Math.max(0,Math.floor(t)); const m=Math.floor(t/60), s=t%60; return (m<10?'0':'')+m+':'+(s<10?'0':'')+s; };
+
+/* ============================================================
+   Sequencer
+   ============================================================ */
+const seq=state.seq;
+Object.keys(SEQ_PROGRAMS).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; $('#seqPreset').appendChild(o); });
+function renderSteps(){
+  const el=$('#steps'); el.innerHTML='';
+  seq.steps.forEach((st,i)=>{
+    const d=document.createElement('div'); d.className='step'+(i===seq.idx?' active':'')+(seq.running&&i<seq.idx?' done':'');
+    d.innerHTML=`<span class="tiny">${i+1}</span><span class="nm" title="${st.layers.map(l=>l.fC+'['+l.beat+']').join(' ')}">${st.name}</span>
+      <span class="row" style="margin:0"><input type="number" value="${st.min}" step="0.5" min="0.1" title="minutes" data-k="min"><span class="tiny">m</span></span>
+      <span class="row" style="margin:0"><input type="number" value="${st.glide}" step="5" min="0" title="glide seconds" data-k="glide"><span class="tiny">s</span></span>
+      <button class="x" title="remove">×</button>`;
+    d.querySelector('.nm').onclick=()=>{ state.layers=st.layers.map(l=>({...l,id:nid()})); renderLayers(); pushLayers(); toast('Layers from step '+(i+1)); };
+    d.querySelectorAll('input').forEach(inp=>inp.onchange=()=>{ st[inp.dataset.k]=parseFloat(inp.value)||0; seqTotals(); });
+    d.querySelector('.x').onclick=()=>{ seq.steps.splice(i,1); renderSteps(); };
+    el.appendChild(d);
+  });
+  seqTotals();
+}
+function seqTotals(){ const tot=seq.steps.reduce((a,s)=>a+s.min,0); $('#seqTotal').textContent='total '+fmtT(tot*60); }
+$('#btnSeqLoad').onclick=()=>{ seq.steps=SEQ_PROGRAMS[$('#seqPreset').value](); seq.idx=-1; renderSteps(); toast('Program loaded'); };
+$('#btnStepAdd').onclick=()=>{ seq.steps.push(stepFrom('Custom '+(seq.steps.length+1), state.layers.map(l=>({...l,id:nid()})), 10, state.glide)); renderSteps(); };
+$('#btnSeqRun').onclick=async()=>{ if(seq.running){ seqStop(true); return; } if(!seq.steps.length) return toast('No steps'); if(!state.playing) await start(); seq.running=true; seq.idx=-1; seq.extended=0; seq.held=false; $('#btnSeqRun').textContent='■ Stop sequence'; ['btnHold','btnExtend','btnSkip'].forEach(id=>$('#'+id).disabled=false); seqNext(); };
+function seqStop(announce){ if(!seq.running) return; seq.running=false; seq.idx=-1; $('#btnSeqRun').textContent='▶ Run sequence'; ['btnHold','btnExtend','btnSkip'].forEach(id=>$('#'+id).disabled=true); $('#seqBadge').textContent='stopped'; $('#seqBadge').classList.remove('on'); $('#seqBar').style.width='0'; $('#seqInfo').textContent='—'; renderSteps(); if(announce) toast('Sequence stopped'); }
+// Give new layers the ids of the closest existing layers (same mode, carrier within 150 Hz) so the
+// engine glides frequency/level of one voice instead of crossfading two voices.
+function adoptIds(prev, next){
+  const free = prev.slice();
+  return next.map(n=>{
+    let best=-1, bd=150;
+    free.forEach((p,i)=>{ if(p && p.mode===n.mode){ const d=Math.abs(p.fC-n.fC); if(d<bd){bd=d;best=i;} } });
+    if(best>=0){ const id=free[best].id; free[best]=null; return {...n, id}; }
+    return {...n, id:nid()};
+  });
+}
+function seqNext(){
+  seq.idx++; seq.extended=0; seq.held=false; $('#btnHold').textContent='⏸ Hold';
+  if(seq.idx>=seq.steps.length){ seqStop(false); toast('Sequence complete — fading out'); stop(); return; }
+  const st=seq.steps[seq.idx];
+  state.layers = adoptIds(state.layers, st.layers);
+  renderLayers(); pushLayers(st.glide);
+  if(st.noise){ Object.assign(state.noise, {kind:st.noise.kind, gainDB:st.noise.gainDB, panPeriod:st.noise.panPeriod, surfPeriod:st.noise.surfPeriod}); $('#noiseType').value=state.noise.kind; $('#noiseGain').value=state.noise.gainDB; $('#noiseGainV').textContent=state.noise.gainDB+' dB'; pushNoise(st.glide); }
+  seq.stepStart=state.ctx.currentTime; $('#seqBadge').textContent='step '+(seq.idx+1)+'/'+seq.steps.length; $('#seqBadge').classList.add('on');
+  renderSteps(); toast('Step '+(seq.idx+1)+': '+st.name);
+}
+function seqTick(){
+  if(!seq.running||seq.idx<0) return;
+  const st=seq.steps[seq.idx]; const now=state.ctx.currentTime;
+  if(seq.held){ seq.stepStart += now-seq.heldAt; seq.heldAt=now; }
+  const dur=st.min*60+seq.extended, el=now-seq.stepStart;
+  $('#seqBar').style.width=Math.min(100,el/dur*100)+'%';
+  $('#seqInfo').textContent=(seq.held?'HELD · ':'')+st.name+' · '+fmtT(el)+' / '+fmtT(dur)+(el<st.glide?' · gliding':'');
+  if(el>=dur) seqNext();
+}
+$('#btnHold').onclick=()=>{ seq.held=!seq.held; seq.heldAt=state.ctx.currentTime; $('#btnHold').textContent=seq.held?'▶ Resume':'⏸ Hold'; toast(seq.held?'Holding this step':'Resuming'); };
+$('#btnExtend').onclick=()=>{ seq.extended+=300; toast('+5 min on this step'); };
+$('#btnSkip').onclick=()=>seqNext();
+// default program
+seq.steps=SEQ_PROGRAMS[Object.keys(SEQ_PROGRAMS)[0]](); renderSteps();
+
+/* ============================================================
+   Save / load
+   ============================================================ */
+$('#btnSave').onclick=()=>{ const data={version:1, layers:state.layers, masterDB:state.masterDB, fade:state.fade, glide:state.glide, noise:state.noise, steps:seq.steps}; const b=new Blob([JSON.stringify(data,null,1)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='hemisync-session.json'; a.click(); };
+$('#btnLoad').onclick=()=>$('#fileLoad').click();
+$('#fileLoad').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ const d=JSON.parse(await f.text()); if(d.layers) state.layers=d.layers.map(l=>({...l,id:nid()})); if(d.noise) Object.assign(state.noise,d.noise); if(d.steps) seq.steps=d.steps; if(d.masterDB!=null){ state.masterDB=d.masterDB; $('#master').value=d.masterDB; $('#masterV').textContent=d.masterDB+' dB'; } renderLayers(); renderSteps(); pushLayers(); pushNoise(); toast('Session loaded'); }catch(err){ toast('Invalid file'); } };
+
+/* ============================================================
+   WAV export — identical engine, offline, chunked
+   ============================================================ */
+const EngineClass = new Function(ENGINE_SRC+'; return HemiEngine;')();
+async function renderWav(){
+  const sr=+$('#wavRate').value, bits=+$('#wavBits').value, what=$('#wavWhat').value;
+  const eng=new EngineClass(sr); eng.rng=(Math.random()*0xFFFFFFFF)>>>0||1;
+  let plan; // [{layers, noise, glide, seconds}]
+  if(what==='cur'){ plan=[{layers:layerPayload(state.layers), noise:state.noise, glide:0, seconds:(+$('#wavMin').value||1)*60}]; }
+  else { if(!seq.steps.length) return toast('No sequence steps'); let prev=[]; plan=seq.steps.map(st=>{ const ls=adoptIds(prev, st.layers); prev=ls; return {layers:layerPayload(ls), noise:st.noise||state.noise, glide:st.glide, seconds:st.min*60}; }); }
+  const total=plan.reduce((a,p)=>a+p.seconds,0)+state.fade; const totalFrames=Math.round(total*sr);
+  const bytesPerSample = bits===32?4:bits/8; const est=totalFrames*2*bytesPerSample/1048576;
+  $('#wavNote').textContent='Rendering '+fmtT(total)+' @ '+sr+' Hz, ~'+est.toFixed(0)+' MB…';
+  $('#btnWav').disabled=true;
+  const chunks=[]; const block=sr; const L=new Float32Array(block), R=new Float32Array(block);
+  const pack = (n)=>{ // interleave + quantise
+    if(bits===32){ const o=new Float32Array(n*2); for(let i=0;i<n;i++){o[2*i]=L[i];o[2*i+1]=R[i];} return o.buffer; }
+    if(bits===24){ const o=new Uint8Array(n*6); for(let i=0;i<n;i++){ let a=Math.max(-1,Math.min(1,L[i]))*8388607|0, b=Math.max(-1,Math.min(1,R[i]))*8388607|0; o[6*i]=a&255;o[6*i+1]=(a>>8)&255;o[6*i+2]=(a>>16)&255; o[6*i+3]=b&255;o[6*i+4]=(b>>8)&255;o[6*i+5]=(b>>16)&255; } return o.buffer; }
+    const o=new Int16Array(n*2); for(let i=0;i<n;i++){ const d=(Math.random()+Math.random()-1)/32768; o[2*i]=Math.max(-32768,Math.min(32767,Math.round((L[i]+d)*32767))); o[2*i+1]=Math.max(-32768,Math.min(32767,Math.round((R[i]+d)*32767))); } return o.buffer; };
+  let done=0; const master=dB(state.masterDB);
+  eng.setMaster(0,0); eng.setMaster(master, state.fade);
+  for(let pi=0;pi<plan.length;pi++){
+    const p=plan[pi]; eng.setLayers(p.layers, pi===0?0:p.glide); const nz=p.noise; eng.setNoise(nz.kind, dB(nz.gainDB), nz.panPeriod, nz.surfPeriod, pi===0?0:p.glide);
+    let rem=Math.round(p.seconds*sr);
+    if(pi===plan.length-1){ rem+=Math.round(state.fade*sr); }
+    while(rem>0){ const n=Math.min(block,rem); if(pi===plan.length-1 && rem<=Math.round(state.fade*sr)+n && eng.master.t!==0){ eng.setMaster(0, state.fade); }
+      eng.render(L,R,n); chunks.push(pack(n)); rem-=n; done+=n;
+      if(chunks.length%5===0){ $('#wavBar').style.width=(done/totalFrames*100)+'%'; await new Promise(r=>setTimeout(r,0)); } }
+  }
+  const dataBytes=chunks.reduce((a,c)=>a+c.byteLength,0);
+  const hdr=new ArrayBuffer(44), v=new DataView(hdr); const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  w(0,'RIFF'); v.setUint32(4,36+dataBytes,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,bits===32?3:1,true); v.setUint16(22,2,true); v.setUint32(24,sr,true); v.setUint32(28,sr*2*bytesPerSample,true); v.setUint16(32,2*bytesPerSample,true); v.setUint16(34,bits,true); w(36,'data'); v.setUint32(40,dataBytes,true);
+  const blob=new Blob([hdr,...chunks],{type:'audio/wav'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='hemisync-'+(what==='cur'?'layers':'sequence')+'-'+sr+'-'+bits+'.wav'; a.click();
+  $('#wavBar').style.width='100%'; $('#wavNote').textContent='Done: '+(dataBytes/1048576).toFixed(0)+' MB, '+fmtT(total)+'. Clipped samples: '+eng.clips; $('#btnWav').disabled=false;
+}
+$('#btnWav').onclick=renderWav;
+
+/* keyboard */
+document.addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return; if(e.code==='Space'){ e.preventDefault(); state.playing?stop():start(); } if(e.key==='h'&&seq.running) $('#btnHold').click(); });
+
+renderLayers();
+// expose for testing
+window.__hemi = {state, EngineClass, parseNotation, layerPayload, byName, SEQ_PROGRAMS};
+</script>
+</body>
+</html>
